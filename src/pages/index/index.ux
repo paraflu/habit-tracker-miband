@@ -22,7 +22,7 @@
         <div class="habits-list">
           <div for="{{ habits }}" class="habit-card" onclick="toggleHabit($item.id)">
             <div class="habit-left">
-              <div class="habit-check {{ isCompletedToday($item.id) ? 'checked' : '' }}">
+              <div class="{{ isCompletedToday($item.id) ? 'habit-check-checked' : 'habit-check' }}">
                 <text class="check-icon">{{ isCompletedToday($item.id) ? '✓' : '' }}</text>
               </div>
               <div class="habit-info">
@@ -58,14 +58,14 @@
 
         <text class="add-label">Icon</text>
         <div class="icon-picker">
-          <div for="{{ availableIcons }}" class="icon-option {{ newHabitIcon === $item ? 'selected' : '' }}" onclick="selectIcon($item)">
+          <div for="{{ availableIcons }}" class="{{ newHabitIcon === $item ? 'icon-option-selected' : 'icon-option' }}" onclick="selectIcon($item)">
             <text class="icon-text">{{ $item }}</text>
           </div>
         </div>
 
         <text class="add-label">Color</text>
         <div class="color-picker">
-          <div for="{{ availableColors }}" class="color-option {{ newHabitColor === $item ? 'selected' : '' }}" onclick="selectColor($item)" style="background-color: {{ $item }};">
+          <div for="{{ availableColors }}" class="{{ newHabitColor === $item ? 'color-option-selected' : 'color-option' }}" onclick="selectColor($item)" style="background-color: {{ $item }};">
           </div>
         </div>
 
@@ -73,7 +73,7 @@
           <div class="btn btn-cancel" onclick="cancelAdd()">
             <text class="btn-text">Cancel</text>
           </div>
-          <div class="btn btn-save {{ newHabitName.length > 0 ? '' : 'disabled' }}" onclick="saveHabit()">
+          <div class="{{ newHabitName.length > 0 ? 'btn btn-save' : 'btn btn-save-disabled' }}" onclick="saveHabit()">
             <text class="btn-text">Save</text>
           </div>
         </div>
@@ -113,14 +113,14 @@
 
     <!-- Bottom Navigation -->
     <div class="bottom-nav">
-      <div class="nav-item {{ view === 'today' ? 'active' : '' }}" onclick="switchView('today')">
+      <div class="{{ view === 'today' ? 'nav-item-active' : 'nav-item' }}" onclick="switchView('today')">
         <text class="nav-icon">📋</text>
         <text class="nav-label">Today</text>
       </div>
       <div class="nav-item add-btn" onclick="startAdd()">
         <text class="nav-icon add-icon">+</text>
       </div>
-      <div class="nav-item {{ view === 'stats' ? 'active' : '' }}" onclick="switchView('stats')">
+      <div class="{{ view === 'stats' ? 'nav-item-active' : 'nav-item' }}" onclick="switchView('stats')">
         <text class="nav-icon">📊</text>
         <text class="nav-label">Stats</text>
       </div>
@@ -216,7 +216,7 @@
     align-items: center;
     justify-content: center;
   }
-  .habit-check.checked {
+  .habit-check-checked {
     background-color: #22c55e;
     border-color: #22c55e;
   }
@@ -304,7 +304,7 @@
     border-width: 2px;
     border-color: transparent;
   }
-  .icon-option.selected {
+  .icon-option-selected {
     border-color: #6366f1;
     background-color: #1e1b4b;
   }
@@ -325,7 +325,7 @@
     border-width: 3px;
     border-color: transparent;
   }
-  .color-option.selected {
+  .color-option-selected {
     border-color: #ffffff;
   }
 
@@ -350,7 +350,7 @@
     background-color: #6366f1;
     margin-left: 10px;
   }
-  .btn-save.disabled {
+  .btn-save-disabled {
     opacity: 0.4;
   }
   .btn-text {
@@ -432,7 +432,15 @@
     align-items: center;
     padding: 8px 16px;
   }
-  .nav-item.active .nav-label {
+  .nav-label-active {
+    color: #6366f1;
+  }
+  .nav-item-active {
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 16px;
+  }
+  .nav-item-active .nav-label {
     color: #6366f1;
   }
   .nav-icon {
