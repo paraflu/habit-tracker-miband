@@ -1,0 +1,16 @@
+<template>
+  <div>
+    <slot></slot>
+  </div>
+</template>
+
+<script>
+export default {
+  onCreate() {
+    console.log('Habit Tracker App created')
+  },
+  onDestroy() {
+    console.log('Habit Tracker App destroyed')
+  }
+}
+</script>

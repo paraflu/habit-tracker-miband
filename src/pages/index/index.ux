@@ -1,0 +1,711 @@
+<template>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <text class="title">{{ pageTitle }}</text>
+      <text class="date">{{ currentDate }}</text>
+    </div>
+
+    <!-- Main Content -->
+    <div class="content">
+
+      <!-- VIEW: Today's Habits -->
+      <div if="{{ view === 'today' }}" class="view">
+        <!-- Empty State -->
+        <div if="{{ habits.length === 0 }}" class="empty-state">
+          <text class="empty-icon">📋</text>
+          <text class="empty-text">No habits yet</text>
+          <text class="empty-sub">Tap + to add one</text>
+        </div>
+
+        <!-- Habits List -->
+        <div class="habits-list">
+          <div for="{{ habits }}" class="habit-card" onclick="toggleHabit($item.id)">
+            <div class="habit-left">
+              <div class="habit-check {{ isCompletedToday($item.id) ? 'checked' : '' }}">
+                <text class="check-icon">{{ isCompletedToday($item.id) ? '✓' : '' }}</text>
+              </div>
+              <div class="habit-info">
+                <text class="habit-name">{{ $item.name }}</text>
+                <text class="habit-streak" if="{{ $item.streak > 0 }}">🔥 {{ $item.streak }}d streak</text>
+              </div>
+            </div>
+            <text class="habit-delete" onclick="deleteHabit($item.id)">×</text>
+          </div>
+        </div>
+
+        <!-- Stats Summary -->
+        <div if="{{ habits.length > 0 }}" class="stats-bar">
+          <div class="stat-item">
+            <text class="stat-value">{{ completedToday }}</text>
+            <text class="stat-label">Done</text>
+          </div>
+          <div class="stat-item">
+            <text class="stat-value">{{ habits.length - completedToday }}</text>
+            <text class="stat-label">Left</text>
+          </div>
+          <div class="stat-item">
+            <text class="stat-value">{{ completionRate }}%</text>
+            <text class="stat-label">Rate</text>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW: Add Habit -->
+      <div if="{{ view === 'add' }}" class="view add-view">
+        <text class="add-label">New Habit</text>
+        <input class="habit-input" type="text" placeholder="e.g. Exercise 30min" onchange="setNewHabitName($event.value)" value="{{ newHabitName }}"/>
+
+        <text class="add-label">Icon</text>
+        <div class="icon-picker">
+          <div for="{{ availableIcons }}" class="icon-option {{ newHabitIcon === $item ? 'selected' : '' }}" onclick="selectIcon($item)">
+            <text class="icon-text">{{ $item }}</text>
+          </div>
+        </div>
+
+        <text class="add-label">Color</text>
+        <div class="color-picker">
+          <div for="{{ availableColors }}" class="color-option {{ newHabitColor === $item ? 'selected' : '' }}" onclick="selectColor($item)" style="background-color: {{ $item }};">
+          </div>
+        </div>
+
+        <div class="add-actions">
+          <div class="btn btn-cancel" onclick="cancelAdd()">
+            <text class="btn-text">Cancel</text>
+          </div>
+          <div class="btn btn-save {{ newHabitName.length > 0 ? '' : 'disabled' }}" onclick="saveHabit()">
+            <text class="btn-text">Save</text>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW: Stats -->
+      <div if="{{ view === 'stats' }}" class="view stats-view">
+        <div class="stats-grid">
+          <div class="stats-card">
+            <text class="stats-card-value">{{ totalHabits }}</text>
+            <text class="stats-card-label">Total Habits</text>
+          </div>
+          <div class="stats-card">
+            <text class="stats-card-value">{{ bestStreak }}</text>
+            <text class="stats-card-label">Best Streak</text>
+          </div>
+          <div class="stats-card">
+            <text class="stats-card-value">{{ totalCompletions }}</text>
+            <text class="stats-card-label">All-Time Done</text>
+          </div>
+          <div class="stats-card">
+            <text class="stats-card-value">{{ overallRate }}%</text>
+            <text class="stats-card-label">Overall Rate</text>
+          </div>
+        </div>
+
+        <!-- Best Streaks -->
+        <div if="{{ habits.length > 0 }}" class="streaks-section">
+          <text class="section-title">🏆 Top Streaks</text>
+          <div for="{{ sortedByStreak }}" class="streak-row">
+            <text class="streak-name">{{ $item.icon }} {{ $item.name }}</text>
+            <text class="streak-value">{{ $item.streak }} days</text>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+      <div class="nav-item {{ view === 'today' ? 'active' : '' }}" onclick="switchView('today')">
+        <text class="nav-icon">📋</text>
+        <text class="nav-label">Today</text>
+      </div>
+      <div class="nav-item add-btn" onclick="startAdd()">
+        <text class="nav-icon add-icon">+</text>
+      </div>
+      <div class="nav-item {{ view === 'stats' ? 'active' : '' }}" onclick="switchView('stats')">
+        <text class="nav-icon">📊</text>
+        <text class="nav-label">Stats</text>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style>
+  /* Layout */
+  .container {
+    flex-direction: column;
+    width: 480px;
+    height: 480px;
+    background-color: #0a0a0f;
+    justify-content: space-between;
+  }
+
+  /* Header */
+  .header {
+    flex-direction: column;
+    padding: 20px 24px 10px;
+    align-items: center;
+  }
+  .title {
+    font-size: 32px;
+    color: #ffffff;
+    font-weight: bold;
+  }
+  .date {
+    font-size: 18px;
+    color: #666677;
+    margin-top: 4px;
+  }
+
+  /* Content */
+  .content {
+    flex: 1;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .view {
+    flex: 1;
+    flex-direction: column;
+    padding: 0 20px;
+  }
+
+  /* Empty State */
+  .empty-state {
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .empty-icon {
+    font-size: 48px;
+  }
+  .empty-text {
+    font-size: 22px;
+    color: #888899;
+    margin-top: 12px;
+  }
+  .empty-sub {
+    font-size: 16px;
+    color: #555566;
+    margin-top: 8px;
+  }
+
+  /* Habits List */
+  .habits-list {
+    flex: 1;
+    flex-direction: column;
+  }
+  .habit-card {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #1a1a2e;
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .habit-left {
+    flex-direction: row;
+    align-items: center;
+    flex: 1;
+  }
+  .habit-check {
+    width: 36px;
+    height: 36px;
+    border-radius: 18px;
+    border-width: 2px;
+    border-color: #444466;
+    align-items: center;
+    justify-content: center;
+  }
+  .habit-check.checked {
+    background-color: #22c55e;
+    border-color: #22c55e;
+  }
+  .check-icon {
+    font-size: 20px;
+    color: #ffffff;
+  }
+  .habit-info {
+    flex-direction: column;
+    margin-left: 14px;
+    flex: 1;
+  }
+  .habit-name {
+    font-size: 20px;
+    color: #ffffff;
+  }
+  .habit-streak {
+    font-size: 15px;
+    color: #f97316;
+    margin-top: 3px;
+  }
+  .habit-delete {
+    font-size: 28px;
+    color: #555566;
+    padding: 4px 8px;
+  }
+
+  /* Stats Bar */
+  .stats-bar {
+    flex-direction: row;
+    justify-content: space-around;
+    padding: 14px 0;
+    margin-top: 8px;
+  }
+  .stat-item {
+    flex-direction: column;
+    align-items: center;
+  }
+  .stat-value {
+    font-size: 24px;
+    color: #22c55e;
+    font-weight: bold;
+  }
+  .stat-label {
+    font-size: 14px;
+    color: #666677;
+    margin-top: 2px;
+  }
+
+  /* Add View */
+  .add-view {
+    padding: 20px 24px;
+  }
+  .add-label {
+    font-size: 18px;
+    color: #888899;
+    margin-bottom: 10px;
+  }
+  .habit-input {
+    font-size: 22px;
+    color: #ffffff;
+    background-color: #1a1a2e;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    width: 420px;
+    height: 50px;
+  }
+
+  /* Icon Picker */
+  .icon-picker {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .icon-option {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    background-color: #1a1a2e;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+    margin-bottom: 8px;
+    border-width: 2px;
+    border-color: transparent;
+  }
+  .icon-option.selected {
+    border-color: #6366f1;
+    background-color: #1e1b4b;
+  }
+  .icon-text {
+    font-size: 26px;
+  }
+
+  /* Color Picker */
+  .color-picker {
+    flex-direction: row;
+    margin-bottom: 24px;
+  }
+  .color-option {
+    width: 40px;
+    height: 40px;
+    border-radius: 20px;
+    margin-right: 10px;
+    border-width: 3px;
+    border-color: transparent;
+  }
+  .color-option.selected {
+    border-color: #ffffff;
+  }
+
+  /* Buttons */
+  .add-actions {
+    flex-direction: row;
+    justify-content: space-between;
+    margin-top: 10px;
+  }
+  .btn {
+    flex: 1;
+    height: 50px;
+    border-radius: 25px;
+    align-items: center;
+    justify-content: center;
+  }
+  .btn-cancel {
+    background-color: #1a1a2e;
+    margin-right: 10px;
+  }
+  .btn-save {
+    background-color: #6366f1;
+    margin-left: 10px;
+  }
+  .btn-save.disabled {
+    opacity: 0.4;
+  }
+  .btn-text {
+    font-size: 20px;
+    color: #ffffff;
+    font-weight: bold;
+  }
+
+  /* Stats View */
+  .stats-view {
+    padding: 16px 24px;
+  }
+  .stats-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  .stats-card {
+    width: 200px;
+    height: 90px;
+    background-color: #1a1a2e;
+    border-radius: 16px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+  }
+  .stats-card-value {
+    font-size: 28px;
+    color: #6366f1;
+    font-weight: bold;
+  }
+  .stats-card-label {
+    font-size: 14px;
+    color: #666677;
+    margin-top: 4px;
+  }
+
+  /* Streaks Section */
+  .streaks-section {
+    flex-direction: column;
+    margin-top: 8px;
+  }
+  .section-title {
+    font-size: 20px;
+    color: #ffffff;
+    font-weight: bold;
+    margin-bottom: 12px;
+  }
+  .streak-row {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom-width: 1px;
+    border-bottom-color: #1a1a2e;
+  }
+  .streak-name {
+    font-size: 18px;
+    color: #ccccdd;
+  }
+  .streak-value {
+    font-size: 18px;
+    color: #f97316;
+    font-weight: bold;
+  }
+
+  /* Bottom Navigation */
+  .bottom-nav {
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    padding: 10px 20px 20px;
+    background-color: #0f0f1a;
+    border-top-width: 1px;
+    border-top-color: #1a1a2e;
+  }
+  .nav-item {
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 16px;
+  }
+  .nav-item.active .nav-label {
+    color: #6366f1;
+  }
+  .nav-icon {
+    font-size: 24px;
+  }
+  .nav-label {
+    font-size: 13px;
+    color: #666677;
+    margin-top: 4px;
+  }
+  .add-btn {
+    background-color: #6366f1;
+    border-radius: 24px;
+    width: 48px;
+    height: 48px;
+    justify-content: center;
+    margin-top: -16px;
+  }
+  .add-icon {
+    font-size: 30px;
+    color: #ffffff;
+  }
+</style>
+
+<script>
+  import storage from '@system.storage'
+  import vibrator from '@system.vibrator'
+
+  const today = () => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+
+  const formatDate = (d) => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`
+  }
+
+  const yesterday = () => {
+    const d = new Date()
+    d.setDate(d.getDate() - 1)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+
+  export default {
+    data: {
+      view: 'today',
+      habits: [],
+      pageTitle: 'Habits',
+      currentDate: formatDate(new Date()),
+      newHabitName: '',
+      newHabitIcon: '⭐',
+      newHabitColor: '#6366f1',
+      availableIcons: ['⭐', '💪', '📚', '💧', '🧘', '🏃', '🎯', '✍️', '🎵', '💤', '🥗', '🧹'],
+      availableColors: ['#6366f1', '#22c55e', '#f97316', '#ef4444', '#06b6d4', '#eab308'],
+      completedToday: 0,
+      totalHabits: 0,
+      bestStreak: 0,
+      totalCompletions: 0,
+      overallRate: 0
+    },
+
+    onInit() {
+      this.loadData()
+    },
+
+    // === Storage ===
+    saveData() {
+      storage.set({
+        key: 'habits_data',
+        value: JSON.stringify(this.habits)
+      })
+      this.updateStats()
+    },
+
+    loadData() {
+      storage.get({
+        key: 'habits_data',
+        success: (data) => {
+          if (data) {
+            this.habits = JSON.parse(data)
+            this.cleanOldCompletions()
+            this.updateStreaks()
+            this.updateStats()
+          }
+        },
+        fail: (data, code) => {
+          console.log(`Storage read failed: ${code}`)
+          this.habits = []
+        }
+      })
+    },
+
+    // === Habit Operations ===
+    toggleHabit(id) {
+      const habit = this.habits.find(h => h.id === id)
+      if (!habit) return
+
+      const todayStr = today()
+      if (!habit.completions) habit.completions = []
+
+      const idx = habit.completions.indexOf(todayStr)
+      if (idx >= 0) {
+        habit.completions.splice(idx, 1)
+      } else {
+        habit.completions.push(todayStr)
+        // Vibrate on completion
+        vibrator.vibrate({ mode: 'short' })
+      }
+
+      this.saveData()
+    },
+
+    deleteHabit(id) {
+      this.habits = this.habits.filter(h => h.id !== id)
+      this.saveData()
+    },
+
+    isCompletedToday(id) {
+      const habit = this.habits.find(h => h.id === id)
+      if (!habit || !habit.completions) return false
+      return habit.completions.indexOf(today()) >= 0
+    },
+
+    // === Streaks ===
+    updateStreaks() {
+      const todayStr = today()
+      const yestStr = yesterday()
+
+      this.habits.forEach(habit => {
+        if (!habit.completions) habit.completions = []
+        habit.streak = this.calcStreak(habit.completions, todayStr, yestStr)
+      })
+    },
+
+    calcStreak(completions, todayStr, yestStr) {
+      if (!completions || completions.length === 0) return 0
+
+      // Must be completed today or yesterday to have a streak
+      if (!completions.includes(todayStr) && !completions.includes(yestStr)) return 0
+
+      let streak = 0
+      let checkDate = new Date()
+
+      // Start from today if completed, else yesterday
+      if (!completions.includes(todayStr)) {
+        checkDate.setDate(checkDate.getDate() - 1)
+      }
+
+      while (true) {
+        const dateStr = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`
+        if (completions.includes(dateStr)) {
+          streak++
+          checkDate.setDate(checkDate.getDate() - 1)
+        } else {
+          break
+        }
+      }
+      return streak
+    },
+
+    // === Cleanup ===
+    cleanOldCompletions() {
+      // Keep only last 90 days of completions to avoid bloat
+      const cutoff = new Date()
+      cutoff.setDate(cutoff.getDate() - 90)
+      const cutoffStr = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}-${String(cutoff.getDate()).padStart(2, '0')}`
+
+      this.habits.forEach(habit => {
+        if (habit.completions) {
+          habit.completions = habit.completions.filter(d => d >= cutoffStr)
+        }
+      })
+    },
+
+    // === Stats ===
+    updateStats() {
+      this.completedToday = this.habits.filter(h => this.isCompletedToday(h.id)).length
+      this.totalHabits = this.habits.length
+
+      // Best streak
+      this.bestStreak = 0
+      this.habits.forEach(h => {
+        if (h.streak > this.bestStreak) this.bestStreak = h.streak
+      })
+
+      // Total completions
+      this.totalCompletions = 0
+      this.habits.forEach(h => {
+        if (h.completions) this.totalCompletions += h.completions.length
+      })
+
+      // Overall rate
+      const daysSinceOldest = this.habits.length > 0 ? this.calcDaysSinceOldest() : 1
+      const possibleCompletions = this.habits.length * Math.max(daysSinceOldest, 1)
+      this.overallRate = possibleCompletions > 0
+        ? Math.round((this.totalCompletions / possibleCompletions) * 100)
+        : 0
+
+      // Update page title with count
+      if (this.view === 'today') {
+        this.pageTitle = `Habits · ${this.completedToday}/${this.totalHabits}`
+      }
+    },
+
+    calcDaysSinceOldest() {
+      let oldest = new Date()
+      this.habits.forEach(h => {
+        if (h.completions && h.completions.length > 0) {
+          const d = new Date(h.completions[0])
+          if (d < oldest) oldest = d
+        }
+      })
+      const diff = Math.ceil((new Date() - oldest) / (1000 * 60 * 60 * 24))
+      return Math.max(diff, 1)
+    },
+
+    get sortedByStreak() {
+      return [...this.habits].sort((a, b) => (b.streak || 0) - (a.streak || 0)).slice(0, 5)
+    },
+
+    // === Navigation ===
+    switchView(v) {
+      this.view = v
+      if (v === 'today') {
+        this.pageTitle = `Habits · ${this.completedToday}/${this.totalHabits}`
+      } else if (v === 'stats') {
+        this.pageTitle = 'Statistics'
+      }
+    },
+
+    startAdd() {
+      this.newHabitName = ''
+      this.newHabitIcon = '⭐'
+      this.newHabitColor = '#6366f1'
+      this.view = 'add'
+      this.pageTitle = 'New Habit'
+    },
+
+    cancelAdd() {
+      this.switchView('today')
+    },
+
+    setNewHabitName(val) {
+      this.newHabitName = val
+    },
+
+    selectIcon(icon) {
+      this.newHabitIcon = icon
+    },
+
+    selectColor(color) {
+      this.newHabitColor = color
+    },
+
+    saveHabit() {
+      if (!this.newHabitName || this.newHabitName.trim().length === 0) return
+
+      const newHabit = {
+        id: Date.now().toString(),
+        name: this.newHabitName.trim(),
+        icon: this.newHabitIcon,
+        color: this.newHabitColor,
+        completions: [],
+        streak: 0,
+        createdAt: today()
+      }
+
+      this.habits.push(newHabit)
+      this.saveData()
+      vibrator.vibrate({ mode: 'short' })
+      this.switchView('today')
+    }
+  }
+</script>
