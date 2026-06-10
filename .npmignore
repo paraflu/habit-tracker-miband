@@ -1,0 +1,11 @@
+# Files to exclude from npm publish
+dist/
+node_modules/
+*.rpk
+.git/
+.github/
+.vscode/
+.husky/
+*.log
+.DS_Store
+Thumbs.db
