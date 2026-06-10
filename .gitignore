@@ -1,5 +1,6 @@
 # .gitignore
 dist/
+coverage/
 *.rpk
 .aiot-ide/
 node_modules/
