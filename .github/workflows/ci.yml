@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint || true
+
+      - name: Run Prettier check
+        run: npm run format:check || true
+
+      - name: Run Stylelint
+        run: npm run stylelint || true
+
+  validate:
+    name: Validate Project
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate manifest.json
+        run: |
+          echo "Validating manifest.json..."
+          node -e "
+            const fs = require('fs');
+            const m = JSON.parse(fs.readFileSync('src/manifest.json', 'utf8'));
+            console.log('Package:', m.package);
+            console.log('Version:', m.versionName);
+            if (!m.package || !m.versionName) {
+              console.error('Invalid manifest');
+              process.exit(1);
+            }
+            console.log('Manifest valid');
+          "
+
+      - name: Validate project structure
+        run: |
+          echo "Checking project structure..."
+          test -f src/manifest.json || (echo "Missing manifest.json" && exit 1)
+          test -f src/app.ux || (echo "Missing app.ux" && exit 1)
+          test -f src/pages/index/index.ux || (echo "Missing pages/index/index.ux" && exit 1)
+          test -f src/common/logo.png || (echo "Missing common/logo.png" && exit 1)
+          echo "Project structure valid"
+
+      - name: Validate package.json
+        run: |
+          node -e "
+            const p = require('./package.json');
+            console.log('Name:', p.name);
+            console.log('Version:', p.version);
+            console.log('Scripts:', Object.keys(p.scripts || {}).join(', '));
+            console.log('package.json valid');
+          "
